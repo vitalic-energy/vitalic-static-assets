@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# semgrep is intentionally omitted: this is a pure static-asset repo with no
+# source code to scan.
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate static assets
+        run: |
+          set -euo pipefail
+
+          # Expected assets must exist.
+          test -f vitalic-stacked-colored.svg
+
+          # No oversized binaries: fail on any tracked file larger than 2 MB.
+          big=$(find . -type f -not -path './.git/*' -size +2M)
+          if [ -n "$big" ]; then
+            echo "Oversized files found:"
+            echo "$big"
+            exit 1
+          fi
+
+          # Every SVG must be well-formed XML.
+          shopt -s nullglob globstar
+          for svg in **/*.svg; do
+            echo "Checking $svg"
+            python3 -c "import sys, xml.dom.minidom; xml.dom.minidom.parse(sys.argv[1])" "$svg"
+          done
+
+          echo "All asset checks passed."
