@@ -7,5 +7,5 @@ change, the worker opens a pull request, the PR auto-merges once checks are
 green, and the loop closes back to the originating issue.
 
 Auto-merge is governed by a checks-only policy for non-critical repositories
-like this one; see [ADR 0009](https://github.com/elmckio/vitalic-hermes-infra/blob/main/docs/decisions/0009-checks-only-auto-merge-non-critical.md)
+like this one; see [ADR 0009](https://github.com/vitalic-energy/vitalic-hermes-infra/blob/main/docs/decisions/0009-checks-only-auto-merge-non-critical.md)
 in the infra repo for the full policy.

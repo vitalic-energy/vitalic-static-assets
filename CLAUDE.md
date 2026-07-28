@@ -9,7 +9,7 @@ this repository. (`AGENTS.md` is a symlink to this file — edit only `CLAUDE.md
 brand assets (currently the `vitalic-stacked-colored.svg` logo). It is not an
 application: there is no build, no runtime, and no dependencies. Consumers
 reference the raw files directly
-(`https://raw.githubusercontent.com/elmckio/vitalic-static-assets/main/<file>`),
+(`https://raw.githubusercontent.com/vitalic-energy/vitalic-static-assets/main/<file>`),
 so **file names and paths are a public contract** — renaming or moving a
 published asset breaks external links.
 
