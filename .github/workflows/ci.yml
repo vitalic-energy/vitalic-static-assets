@@ -1,0 +1,64 @@
+name: ci
+
+# Restores the two contexts this repo's `protect-main` ruleset requires.
+#
+# The ruleset (id 18455716) requires `gitleaks` and `test` with NO bypass actors.
+# `main` was reset on 2026-08-13 to a commit predating this directory, so from
+# that day until this workflow lands every pull request was permanently BLOCKED —
+# required contexts that no workflow can produce are never satisfied, and the PR
+# simply waits, which looks exactly like a quiet queue.
+#
+# The job NAMES are the required contexts. `gitleaks` and `test` are literal
+# strings in the ruleset, and a required context is a job's display `name:` — so
+# renaming either job here re-breaks every PR in this repo.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.24.0"
+      # From the release's own checksums.txt. Bump alongside GITLEAKS_VERSION.
+      GITLEAKS_SHA256: "cb49b7de5ee986510fe8666ca0273a6cc15eb82571f2f14832c9e8920751f3a4"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history: this repo is public, so a secret committed once and
+          # removed later is still published. A shallow scan would miss it.
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o /tmp/gitleaks.tar.gz
+          # Verify BEFORE extracting or installing. This binary IS the secrets
+          # gate and it is installed as root — a substituted artefact could
+          # simply report a clean scan.
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+      - name: Scan for secrets
+        run: gitleaks detect --source . --redact --no-banner --verbose
+
+  # A trivial-but-real check is legitimate for an asset store; a vacuous one is
+  # not. These four assertions are the ones that can actually fail on a bad
+  # commit here, and each has a consequence: a malformed SVG breaks every site
+  # embedding it, an oversized asset makes the brand mark unusable on a page, a
+  # scripted SVG is an XSS vector in a PUBLIC asset consumed by other sites, and
+  # an empty repo means the logo everything links to has been deleted.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check the assets
+        run: python3 .github/scripts/check_assets.py
